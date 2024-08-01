@@ -1,0 +1,35 @@
+[package]
+# 工程的名称
+name = "cjn-os"
+# 工程当前的版本号
+version = "0.1.0"
+# 表示此项目使用 2021 年发布的 Rust 版本来构建。
+edition = "2021"
+authors = [ "Jinnanchen for ..."]
+
+# 使用`cargo build`编译时需要的配置
+# 开发模式下的编译配置（不带 --release 标志）
+[profile.dev]
+# 当出现 panic 时，程序会立即中止，而不会进行栈展开。这在嵌入式系统或OS开发中很常见
+panic = "abort" # 禁用panic时栈展开
+
+# 使用`cargo build --release`编译时需要的配置
+# 发布模式下的编译配置（带 --release 标志）
+[profile.release]
+# 同样地，在 release 构建中当出现 panic 也被设置为直接abort，不做栈展开处理。
+panic = "abort" # 禁用panic时栈展开
+
+# 项目依赖部分。
+[dependencies]
+# 指定 'bootloader' crate 的版本，bootloader 是用于制作操作系统引导加载程序的一个 Rust库
+bootloader = "0.9.23"
+
+[package.metadata.bootimage]
+# 指定构建 bootimage （许多裸机 OS 需要构成可启动镜像文件）时使用的命令为 'xbuild'
+build-command = ["xbuild"]
+
+#* `cargo xbuild` 是 `cargo build` 的替代品，它允许更加精细控制交叉编译过程以及Rust标准库的编译行为。这适用于需要非默认目标平台标准库支持时。（随着Rust项目和Cargo工具链不断更新，`xbuild` 功能可能已经合并到最新版Cargo内部了，请根据您所使用Rust版本确定是否还需使用 `xbuild`）。
+
+#* `[profile.dev]` 和 `[profile.release]` 的区别主要体现在性能优化级别和调试信息上：“dev”通常包含更多调试信息且优化较少（速度较慢但编译更快、调试友好），而 “release”则进行高级别优化（速度快，但编译时间长，并且调试信息可能更少）。两个环境都设置 `panic=abort` 是因为在某些系统环境（例如操作系统内核开发）中栈展开机制是一种奢侈且可能导致问题的行为。
+
+#eh_personality语言项标记的函数，将被用于实现栈展开（stack unwinding）。在使用标准库的情况下，当panic发生时，Rust将使用栈展开，来运行在栈上活跃的所有变量的析构函数（destructor）——这确保了所有使用的内存都被释放，允许调用程序的父进程（parent thread）捕获panic，处理并继续运行。但是，栈展开是一个复杂的过程，如Linux的libunwind或Windows的结构化异常处理（structured exception handling, SEH），通常需要依赖于操作系统的库；所以我们不在自己编写的操作系统中使用它
