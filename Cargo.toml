@@ -23,6 +23,7 @@ panic = "abort" # 禁用panic时栈展开
 [dependencies]
 # 指定 'bootloader' crate 的版本，bootloader 是用于制作操作系统引导加载程序的一个 Rust库
 bootloader = "0.9.23"
+volatile = "0.2.3"
 
 [package.metadata.bootimage]
 # 指定构建 bootimage （许多裸机 OS 需要构成可启动镜像文件）时使用的命令为 'xbuild'
