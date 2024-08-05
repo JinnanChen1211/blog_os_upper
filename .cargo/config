@@ -1,4 +1,4 @@
-# 设置构建目标配置文件为"x86_64-cinea_os.json"
+# 设置构建目标配置文件为"x86_64-cjn.json"
 # 这是一个json文件描述了目标系统的特定配置。
 [build]
 target = "x86_64-cjn_os.json"
@@ -10,8 +10,8 @@ target = "x86_64-cjn_os.json"
 #  you should not add compiler_builtins as dependency yourself. cargo will build it automatically for you.
 # https://github.com/rust-lang/compiler-builtins/issues/334
 # [unstable]
-# build-std = ["core", "compiler_builtins"]
-# build-std-features = ["compiler-builtins-mem"]
+build-std = ["core", "compiler_builtins"]
+build-std-features = ["compiler-builtins-mem"]
 
 # `bootloader runner` 不是 Cargo 或 Rust 的内置命令，也不是一个约定俗成的固定写法。
 # 它实际上应该代表了一个特定于你的项目或环境的可执行工具或脚本。
