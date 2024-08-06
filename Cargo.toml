@@ -22,8 +22,7 @@ panic = "abort" # 禁用panic时栈展开
 # 项目依赖部分。
 [dependencies]
 # 指定 'bootloader' crate 的版本，bootloader 是用于制作操作系统引导加载程序的一个 Rust库
-bootloader = "0.9.23"
-volatile = "0.2.3"
+bootloader = { version = "0.9.23", features = ["map_physical_memory"] }
 # 这表示项目依赖于名为`lazy_static`的crate，版本要求是1.4.0，并且启用了一个特性（feature）叫做`spin_no_std`。这个crate通常用于创建在程序运行时初始化一次的静态变量。
 lazy_static = { version = "1.4.0", features = ["spin_no_std"]}
 # 表示项目需要使用名为 `pc-keyboard` 的crate，指定版本为0.5.0。这个crate提供与PC键盘交互相关功能
@@ -32,6 +31,7 @@ pc-keyboard = "0.5.0"
 pic8259 = "0.10.4"
 # 该库提供自旋锁等同步原语(synchronization primitives)，在无法使用标准库中的线程锁定机制时非常有用，如在no_std环境(不允许使用标准库)中编写操作系统内核代码时
 spin = "0.9.8"
+volatile = "0.2.3"
 x86_64 = "0.14.10"
 
 [package.metadata.bootimage]
