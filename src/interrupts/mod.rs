@@ -6,7 +6,7 @@ use spin::lock_api::Mutex;
 // 导入用于低级别I/O端口操作的 `Port` 结构体，与硬件设备进行通信时常用到
 use x86_64::instructions::port::Port;
 // 从x86_64标准库中导入关于中断描述符表(Interrupt Descriptor Table, IDT)和中断栈帧(Interrupt Stack Frame) 的结构体定义。IDT用于定义中断服务例程(ISRs)，而中断栈帧保存发生中断时CPU寄存器状态
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
 
 // 引入前面定义好的枚举 `InterruptIndex` ，代表各个片段(PICS)相关联映射向量编号概念理解工具项
 use pics::InterruptIndex;
@@ -25,6 +25,8 @@ lazy_static! {
         idt.breakpoint.set_handler_fn(breakpoint_handler);
         // 设置double fault (双重错误）异常 对应中断处理功能
         idt.double_fault.set_handler_fn(double_fault_handler);
+        // 为IDT（中断描述符表）中的页面错误异常设置处理函数
+        idt.page_fault.set_handler_fn(page_fault_handler);
         // 将计时器和键盘中断索引映射到相应处理程序
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(time_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
@@ -64,6 +66,22 @@ extern "x86-interrupt" fn time_interrupt_handler(_stack_frame: InterruptStackFra
         pics::PICS.lock().notify_end_of_interrupt(pics::InterruptIndex::Timer.as_u8());
     }
 }
+
+// 页错异常处理函数
+// 定义了一个名为`page_fault_handler`的外部中断处理函数，用于在发生页面错误时被调用。它接收两个参数：一个是当前CPU堆栈帧信息，另一个是页面错误码
+extern "x86-interrupt" fn page_fault_handler(_stack_frame: InterruptStackFrame, _error_code: PageFaultErrorCode) {
+    // 导入模块内定义的`hlt_loop`函数以及从crate中获取CR2控制寄存器模块
+    // CR2寄存器保存着最后一次产生页错异常时所访问的虚拟地址
+    use crate::hlt_loop;
+    use x86_64::registers::control::Cr2;
+    // 格式化并打印出传入该错误处理程序时CPU堆栈帧（包括指令、堆栈、程序计数器等）的状态信息
+    println!("EXCEPTION: PAGE FAULT");
+    println!("Accessed Address: {:?}", Cr2::read());
+    println!("{:#?}", _stack_frame);
+    // 调用之前导入的`hlt_loop()`函数执行无限循环，并置系统处于待机状态直到下一次中断到来
+    hlt_loop();
+}
+    
 
 // 键盘中断处理函数
 // 使用 `"x86-interrupt"` 调用约定，声明一个键盘中断处理器函数。它接收一个 `InterruptStackFrame` 参数 `_stack_frame`，包含发生中断时的CPU寄存器状态（在此函数不直接使用）
