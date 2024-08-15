@@ -11,10 +11,14 @@
 // 这表示正在声明（declare）三个模块：`interrupts`、`vga_buffer` 和 `gdt`。通过使用 `mod` 关键字，告诉 Rust 编译器期望在当前 crate 的文件系统中找到与模块同名的文件或目录。
 // - 如果是文件，则模块的内容将会来自于一个同名的 `.rs` 文件。例如，对于 `mod interrupts;`，编译器会查找一个叫做 `interrupts.rs` 的文件。
 // - 如果是目录，则模块的内容将会来自于该目录下的 `mod.rs` 文件。例如，对于 `mod gdt;` 如果有一个名为 `gdt/` 的目录存在，那么编译器会查找 `gdt/mod.rs
+
+extern crate alloc;
+
 pub mod interrupts;
 pub mod vga_buffer;
 pub mod gdt;
 pub mod memory;
+pub mod allocator;
 
 pub fn init() {
     // 加载GDT

@@ -7,11 +7,12 @@ target = "x86_64-cjn_os.json"
 # - `core`: 这是完全不依赖于操作系统抽象的最小级别标准库部分。它为所有目标平台提供基础类型和trait等核心语言支持，因此非常适合裸机、嵌入式开发或自制操作系统内核。
 #- `compiler_builtins`: 这个 crate 提供了很多底层构建块以支持高级语言特性，比如某些整数算数操作等。正常情况下此crate由Rust工具链隐式地处理。
 #当设置 `build-std = ["core", "compiler_builtins"]` 时，意味着在构建项目的同时也会对这两个 crate 进行编译，并且会始终使用与你项目相同配置来编译它们（例如针对特定架构优化），而非使用预先构建好的版本。 这对于交叉编译到不同于主机平台的目标架构尤其有用。
+# `alloc` 是一个 Rust 库，用于在没有操作系统的嵌入式系统或其他受限环境中管理动态内存分配。在这些场景中，通常无法使用完整的标准库 (`std`) 因为标准库依赖于操作系统提供许多功能（如文件I/O, 网络处理等）。但是，有时你仍然需要对堆内存进行操作，比如创建和管理可变大小的数据结构（如 动态数组）
 #  you should not add compiler_builtins as dependency yourself. cargo will build it automatically for you.
 # https://github.com/rust-lang/compiler-builtins/issues/334
-# [unstable]
-# build-std = ["core", "compiler_builtins"]
-# build-std-features = ["compiler-builtins-mem"]
+[unstable]
+build-std = ["core", "compiler_builtins", "alloc"]
+build-std-features = ["compiler-builtins-mem"]
 
 # `bootloader runner` 不是 Cargo 或 Rust 的内置命令，也不是一个约定俗成的固定写法。
 # 它实际上应该代表了一个特定于你的项目或环境的可执行工具或脚本。
