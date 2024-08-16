@@ -3,6 +3,8 @@
 #![no_main]
 // 启用一个尚未稳定的 Rust 功能，允许定义使用 `"x86-interrupt"` 调用约定的函数。这对于设置处理x86中断所需的正确函数签名至关重要
 #![feature(abi_x86_interrupt)]
+#![feature(asm_const)]
+#![feature(const_mut_refs)]
 
 // 告知编译器应有相应模块存在，并指示它去特定位置寻找这些模块定义
 // - `interrupts`: 处理CPU中断和异常。
@@ -19,6 +21,9 @@ pub mod vga_buffer;
 pub mod gdt;
 pub mod memory;
 pub mod allocator;
+pub mod graphic;
+pub mod qemu;
+pub mod pci;
 
 pub fn init() {
     // 加载GDT
@@ -32,6 +37,9 @@ pub fn init() {
     unsafe {interrupts::pics::PICS.lock().initialize()};
     // 开启CPU中断，使得CPU能够响应外部设备发起的IRQ和其他形式的硬件请求
     x86_64::instructions::interrupts::enable();
+
+    // 把显存拿到手 删除 不需要了
+    // graphic::BUFFER.lock();
 }
 
 pub fn hlt_loop() -> !{
@@ -40,8 +48,6 @@ pub fn hlt_loop() -> !{
         x86_64::instructions::hlt;
     }
 }
-
-
 
 // 1. #![no_std]是工程里每个rs都要使用吗？为什么有的rs没使用？有的rs比如这个lib.rs又使用
 // 属性 `#![no_std]` 通常只在 crate 根（如库的根文件 lib.rs 或二进制项目的 main.rs）中设置一次。这是因为 `#![no_std]` 是一个属性(attribute)，它应用于整个 crate 的配置，而不仅仅是单个模块。

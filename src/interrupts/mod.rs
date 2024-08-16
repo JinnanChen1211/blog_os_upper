@@ -1,3 +1,4 @@
+use alloc::format;
 use lazy_static::lazy_static;
 // 从`pc_keyboard` crate（包）导入 `Keyboard` 结构和 `layouts` 模块。该crate提供了处理PC样式键盘输入的方法和数据结构
 use pc_keyboard::{Keyboard, layouts};
@@ -13,6 +14,7 @@ use pics::InterruptIndex;
 
 // 导出当前crate提供的打印函数 "`print!`" 和 "`println!"` 宏，方便其他模块输出信息至控制台或屏幕
 use crate::{print, println};
+use crate::qemu::qemu_print;
 
 pub mod pics;
 
@@ -45,6 +47,7 @@ pub fn init_idt() {
 // - 函数内部打印一条消息和栈帧信息
 extern "x86-interrupt" fn breakpoint_handler(_stack_frame: InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", _stack_frame);
+    qemu_print(format!("EXCEPTION: BREAKPOINT\n{:#?}\n", _stack_frame).as_str());
 }
 
 // 双重异常处理函数
@@ -53,6 +56,7 @@ extern "x86-interrupt" fn breakpoint_handler(_stack_frame: InterruptStackFrame) 
 // - 函数内部打印一条消息和栈帧信息后进入无限循环，因为双重错误通常是致命的，不可能恢复执行；返回类型 `!` 表明该函数不返回
 extern "x86-interrupt" fn double_fault_handler(_stack_frame: InterruptStackFrame, _error_code: u64) -> ! {
     println!("EXCEPTION: DOUBLE FAULT\n{:#?}", _stack_frame);
+    qemu_print(format!("EXCEPTION: DOUBLE FAULT\n{:#?}\n", _stack_frame).as_str());
     loop {}
 }
 
@@ -78,6 +82,10 @@ extern "x86-interrupt" fn page_fault_handler(_stack_frame: InterruptStackFrame, 
     println!("EXCEPTION: PAGE FAULT");
     println!("Accessed Address: {:?}", Cr2::read());
     println!("{:#?}", _stack_frame);
+
+    qemu_print(format!("EXCEPTION: PAGE FAULT\n").as_str());
+    qemu_print(format!("Accessed Address: {:?}\n", Cr2::read()).as_str());
+    qemu_print(format!("{:#?}\n", _stack_frame).as_str());
     // 调用之前导入的`hlt_loop()`函数执行无限循环，并置系统处于待机状态直到下一次中断到来
     hlt_loop();
 }
@@ -87,7 +95,7 @@ extern "x86-interrupt" fn page_fault_handler(_stack_frame: InterruptStackFrame, 
 // 使用 `"x86-interrupt"` 调用约定，声明一个键盘中断处理器函数。它接收一个 `InterruptStackFrame` 参数 `_stack_frame`，包含发生中断时的CPU寄存器状态（在此函数不直接使用）
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
     // 在函数内部导入 `pc_keyboard` crate 的相关模块和类型，用于解码键盘扫描码
-    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+    use pc_keyboard::{DecodedKey, HandleControl, Keyboard, layouts, ScancodeSet1};
     // 使用 `lazy_static!` 定义了一个静态的 `KEYBOARD` 变量，它是一个互斥锁（Mutex），保护 `Keyboard` 结构体实例。这个结构体支持美国104键布局和扫描集1，并且选择忽略控制字符（例如Ctrl组合按键
     lazy_static! {
         static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
@@ -107,7 +115,7 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
         if let Some(key) = keyboard.process_keyevent(key_event) {
             match key {
-                DecodedKey::Unicode(character) => print!("{}",character),
+                DecodedKey::Unicode(character) => print!("{}", character),
                 DecodedKey::RawKey(key) => print!("{:?}", key),
             }
         }
