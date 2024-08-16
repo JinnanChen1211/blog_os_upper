@@ -4,14 +4,19 @@
 #![feature(abi_x86_interrupt)]
 
 extern crate alloc;
+use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
+
 
 use core::panic::PanicInfo;
 use bootloader::{BootInfo, entry_point};
 use x86_64::structures::paging::Page;
 use x86_64::VirtAddr;
 use cjn_os::{allocator, println};
+use cjn_os::graphic::{enter_wide_mode, GD};
+use cjn_os::graphic::font::test_font;
+use cjn_os::memory::graphic_support::create_graphic_memory_mapping;
+use cjn_os::qemu::qemu_print;
 use cjn_os::vga_buffer;
-use alloc::boxed::Box;
 
 entry_point!(kernel_main);
 
@@ -39,7 +44,8 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let phys_mem_offset: VirtAddr = VirtAddr::new(boot_info.physical_memory_offset.clone());
     // 调用一个不安全函数 `cjn_os::memory::init` 并传入 `phys_mem_offset`，进行物理内存到虚拟内存的映射初始化，将返回值赋予变量 `mapper`。
     // - **原因**: 初始化内存映射器，用于将一些虚拟地址映射到物理地址上，通常在操作系统启动时设置
-    let mut mapper = unsafe{cjn_os::memory::init(phys_mem_offset)};
+    // let mut mapper = unsafe{cjn_os::memory::init(phys_mem_offset)};
+    let mut mapper = unsafe { cjn_os::memory::init(phys_mem_offset) };
     // 调用另一个不安全函数 `BootInfoFrameAllocator::init`，传入 boot info（引导信息）中的内存图（memory map），并生成帧分配器实例。
     // - **原因**: 帧分配器负责管理物理内存帧，它可以提供新的帧供使用或回收不再需要的帧
     let mut frame_allocator = unsafe {
@@ -52,21 +58,50 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     // map an unused page
     // 映射一页未使用的页面。这里通过传入虚拟地址 0 来创建代表此页面变量 `page`。
     // - **原因**: 映射特定虚拟地址对应的一页。这通常用于测试或系统启动过程中对某些固定位置进行特殊处理
-    let page = Page::containing_address(VirtAddr::new(0));
+    // let page = Page::containing_address(VirtAddr::new(0));
+    
     // 调用了 `cjn_os` 模块中的 `create_example_mapping` 函数，将页面 `page` 映射到物理内存。它传入了虚拟地址页面对象 `page`、内存映射器 `mapper` 和帧分配器 `frame_allocator`。
     //    - **原因**: 这是为了在无操作系统环境中手动管理内存，确保特定虚拟地址被正确映射到物理内存。
-    cjn_os::memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
-    // write the string `New!` to the screen through the new mapping
-    // - 首先，获取页面起始地址并转换为可变指针类型：`let page_ptr: *mut u64 = page.start_address().as_mut_ptr();`
-    // - **原因**: 为了能够直接操作该虚拟地址对应的物理内存。
-    // - 然后，通过偏移量 400 来写入数据：`unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};`
-    // - **原因**: 使用这个偏移量和具体的数据（这里是十六进制数）将字符串 "New!" 写入屏幕缓冲区。
-    let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-    unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};
-    // 创建了一个包含整数 41 的 Box 对象，并将其分配在堆上。
-     // - **原因**: 测试堆的初始化是否成功，以及后续动态分配功能是否正常工作
-    let _x = Box::new(41);
+    // cjn_os::memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
+
+        // let heap_value = Box::new(831);
+    // println!("heap_value is at {:p}", heap_value);
+    //
+    // let mut vec = Vec::new();
+    // for i in 0..500 {
+    //     vec.push(i)
+    // }
+    // println!("vec at {:p}", vec.as_slice());
+    //
+    // let reference_counted = Rc::new(vec![1, 2, 3]);
+    // let cloned_reference = reference_counted.clone();
+    // println!("current reference count is {}", Rc::strong_count(&cloned_reference));
+    // core::mem::drop(reference_counted);
+    // println!("reference count is {} now", Rc::strong_count(&cloned_reference));
+
+    qemu_print("The OS is leaving VGA now...\n");
+
+    enter_wide_mode(&mut mapper, &mut frame_allocator);
+
+    GD.lock().display_rect(0, 0, 800, 600, 0xFFFFFF);
+
+    // // write the string `New!` to the screen through the new mapping
+    // // - 首先，获取页面起始地址并转换为可变指针类型：`let page_ptr: *mut u64 = page.start_address().as_mut_ptr();`
+    // // - **原因**: 为了能够直接操作该虚拟地址对应的物理内存。
+    // // - 然后，通过偏移量 400 来写入数据：`unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};`
+    // // - **原因**: 使用这个偏移量和具体的数据（这里是十六进制数）将字符串 "New!" 写入屏幕缓冲区。
+    // let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
+    // unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};
+    // // 创建了一个包含整数 41 的 Box 对象，并将其分配在堆上。
+    //  // - **原因**: 测试堆的初始化是否成功，以及后续动态分配功能是否正常工作
+    // let _x = Box::new(41);
     // println!("{:?}",x);
+
+    let lpld = include_bytes!("../assets/91527085_p0.bmp");
+    let cjn_os = include_bytes!("../assets/cjn-os.bmp");
+    //GD.lock().display_img(0, 0, lpld);
+    GD.lock().display_img(400, 300, cjn_os);
+    test_font();
     // 进入无限循环防止 `_start` 函数,返回也确保内核不会意外退出到未定义行为状态中去
     cjn_os::hlt_loop();
 }
