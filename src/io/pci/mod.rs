@@ -1,8 +1,4 @@
-use alloc::format;
-
 use x86::io::{inl, outl};
-
-use crate::qemu::qemu_print;
 
 // 定义两个常量，表示PCI配置空间的地址寄存器和数据寄存器的I/O端口地址
 const PCI_CONFIG_ADDRESS: u16 = 0xCF8;

@@ -43,7 +43,7 @@ x86_64 = "0.14.10"
 [package.metadata.bootimage]
 # 指定构建 bootimage （许多裸机 OS 需要构成可启动镜像文件）时使用的命令为 'xbuild'
 build-command = ["xbuild"]
-run-args = ["-serial", "stdio"]
+run-args = ["-serial", "stdio", "-m", "1G"]
 
 #* `cargo xbuild` 是 `cargo build` 的替代品，它允许更加精细控制交叉编译过程以及Rust标准库的编译行为。这适用于需要非默认目标平台标准库支持时。（随着Rust项目和Cargo工具链不断更新，`xbuild` 功能可能已经合并到最新版Cargo内部了，请根据您所使用Rust版本确定是否还需使用 `xbuild`）。
 
