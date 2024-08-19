@@ -3,10 +3,7 @@ use x86_64::{PhysAddr, VirtAddr};
 use x86_64::structures::paging::{FrameAllocator, Mapper, OffsetPageTable, Page, PhysFrame, Size4KiB};
 
 // 配置区域
-// 定义一个常量 `NEEDED_PAGE_NUM`，表示需要映射的页面数量为352
-const NEEDED_PAGE_NUM: usize = 352;
-// 定义一个常量 `START_ADDR`，表示显存的起始物理地址为0x000A_0000（通常为VGA兼容显存区域）
-const START_ADDR: u64 = 0x000A_0000;
+const NEEDED_PAGE_NUM: usize = 469;
 // 定义一个公共常量 `START_VIRT_ADDR`，表示显存映射到虚拟内存空间的起始地址为0xC000_0000
 pub const START_VIRT_ADDR: u64 = 0xC000_0000;
 

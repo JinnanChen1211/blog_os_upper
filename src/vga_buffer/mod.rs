@@ -6,7 +6,7 @@ use spin::Mutex;
 // 引入`Volatile`类型封装内存，确保每次修改都是直接对硬件的
 use volatile::Volatile;
 use x86_64::instructions::interrupts;
-
+use crate::println;
 
 // VGA标准颜色
 // 允许未使用代码不被警告
@@ -196,18 +196,18 @@ pub fn _print(args: fmt::Arguments) {
     })
 }
 
-// 定义了一个宏 `print!`, 当调用此宏时将展开成对上面定义的 `_print()` 函数的调用，传递给定参数作为格式化参数列表。这个宏可以在crate中任何地方使用
-#[macro_export]
-macro_rules! print {
-    ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
-}
+// // 定义了一个宏 `print!`, 当调用此宏时将展开成对上面定义的 `_print()` 函数的调用，传递给定参数作为格式化参数列表。这个宏可以在crate中任何地方使用
+// #[macro_export]
+// macro_rules! print {
+//     ($($arg:tt)*) => ($crate::vga_buffer::_print(format_args!($($arg)*)));
+// }
 
-// 同样导出了另一个宏 `println!`, 它基于前面的 `print!` 宏但还附加一个换行符 `\n`。第一种形式只输出换行符，第二种形式则输出格式化后内容并追加换行符。
-#[macro_export]
-macro_rules! println {
-    () => ($crate::print!("\n"));
-    ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
-}
+// // 同样导出了另一个宏 `println!`, 它基于前面的 `print!` 宏但还附加一个换行符 `\n`。第一种形式只输出换行符，第二种形式则输出格式化后内容并追加换行符。
+// #[macro_export]
+// macro_rules! println {
+//     () => ($crate::print!("\n"));
+//     ($($arg:tt)*) => ($crate::print!("{}\n", format_args!($($arg)*)));
+// }
 
 pub fn print_something() {
     println!("Os start now.\n\n");

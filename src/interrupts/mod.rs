@@ -1,9 +1,7 @@
 use alloc::format;
 use lazy_static::lazy_static;
-// 从`pc_keyboard` crate（包）导入 `Keyboard` 结构和 `layouts` 模块。该crate提供了处理PC样式键盘输入的方法和数据结构
-use pc_keyboard::{Keyboard, layouts};
 // 从spin库导入其版本的互斥锁（Mutex）。这种类型的锁特别适合操作系统级应用，因为操作系统不总是可以休眠线程以等待锁释放
-use spin::lock_api::Mutex;
+use spin::Mutex;
 // 导入用于低级别I/O端口操作的 `Port` 结构体，与硬件设备进行通信时常用到
 use x86_64::instructions::port::Port;
 // 从x86_64标准库中导入关于中断描述符表(Interrupt Descriptor Table, IDT)和中断栈帧(Interrupt Stack Frame) 的结构体定义。IDT用于定义中断服务例程(ISRs)，而中断栈帧保存发生中断时CPU寄存器状态
@@ -14,7 +12,7 @@ use pics::InterruptIndex;
 
 // 导出当前crate提供的打印函数 "`print!`" 和 "`println!"` 宏，方便其他模块输出信息至控制台或屏幕
 use crate::{print, println};
-use crate::qemu::qemu_print;
+use crate::io::qemu::qemu_print;
 
 pub mod pics;
 
@@ -60,11 +58,15 @@ extern "x86-interrupt" fn double_fault_handler(_stack_frame: InterruptStackFrame
     loop {}
 }
 
+lazy_static! {
+    pub static ref TIME: Mutex<u128> = Mutex::new(0);
+}
+
 // 定时器中断处理函数
 // - 每次定时器触发时打印出一个点(`.`)来表示时间流逝。
 // - `unsafe {}` 块包含潜在危险操作：锁定 PIC 控制器并发送 EOI (End Of Interrupt)，告知我们已经完成对当前中断的处理；需要unsafe因为如果错误地发送EOI可能导致中断管理混乱
 extern "x86-interrupt" fn time_interrupt_handler(_stack_frame: InterruptStackFrame) {
-    print!(".");
+    *TIME.lock() += 1;
 
     unsafe {
         pics::PICS.lock().notify_end_of_interrupt(pics::InterruptIndex::Timer.as_u8());

@@ -4,19 +4,15 @@
 #![feature(abi_x86_interrupt)]
 
 extern crate alloc;
-use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
-
 
 use core::panic::PanicInfo;
 use bootloader::{BootInfo, entry_point};
-use x86_64::structures::paging::Page;
 use x86_64::VirtAddr;
 use cjn_os::{allocator, println};
-use cjn_os::graphic::{enter_wide_mode, GD};
-use cjn_os::graphic::font::test_font;
-use cjn_os::memory::graphic_support::create_graphic_memory_mapping;
-use cjn_os::qemu::qemu_print;
+use cjn_os::graphic::enter_wide_mode;
+use cjn_os::gui::init_gui;
 use cjn_os::vga_buffer;
+use cjn_os::io::qemu::qemu_print;
 
 entry_point!(kernel_main);
 
@@ -38,8 +34,9 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     vga_buffer::print_something();
 
     use cjn_os::memory::BootInfoFrameAllocator;
-    use cjn_os::allocator;
+    qemu_print("A\n");
 
+    println!("\n\nWaiting for initializing the heap memory...\n");
     // 使用来自于`boot_info.physical_memory_offset`的值创建了一个新的 `VirtAddr`(虚拟内存地址)实例。这个偏移量被用于在物理和虚拟地址之间进行转换
     let phys_mem_offset: VirtAddr = VirtAddr::new(boot_info.physical_memory_offset.clone());
     // 调用一个不安全函数 `cjn_os::memory::init` 并传入 `phys_mem_offset`，进行物理内存到虚拟内存的映射初始化，将返回值赋予变量 `mapper`。
@@ -51,57 +48,18 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     let mut frame_allocator = unsafe {
         BootInfoFrameAllocator::init(&boot_info.memory_map)
     };
+    qemu_print("B\n");
     // 调用 `allocator::init_heap` 方法传入前面初始化好的内存映射器和帧分配器来初始化堆空间，如失败则输出错误信息"Heap initialization failed"。
     // - **原因**: 在无操作系统环境中，手动初始化堆非常重要，以便后续动态分配资源
     allocator::init_heap(&mut mapper, &mut frame_allocator)
         .expect("Heap initialization failed");
-    // map an unused page
-    // 映射一页未使用的页面。这里通过传入虚拟地址 0 来创建代表此页面变量 `page`。
-    // - **原因**: 映射特定虚拟地址对应的一页。这通常用于测试或系统启动过程中对某些固定位置进行特殊处理
-    // let page = Page::containing_address(VirtAddr::new(0));
-    
-    // 调用了 `cjn_os` 模块中的 `create_example_mapping` 函数，将页面 `page` 映射到物理内存。它传入了虚拟地址页面对象 `page`、内存映射器 `mapper` 和帧分配器 `frame_allocator`。
-    //    - **原因**: 这是为了在无操作系统环境中手动管理内存，确保特定虚拟地址被正确映射到物理内存。
-    // cjn_os::memory::create_example_mapping(page, &mut mapper, &mut frame_allocator);
-
-        // let heap_value = Box::new(831);
-    // println!("heap_value is at {:p}", heap_value);
-    //
-    // let mut vec = Vec::new();
-    // for i in 0..500 {
-    //     vec.push(i)
-    // }
-    // println!("vec at {:p}", vec.as_slice());
-    //
-    // let reference_counted = Rc::new(vec![1, 2, 3]);
-    // let cloned_reference = reference_counted.clone();
-    // println!("current reference count is {}", Rc::strong_count(&cloned_reference));
-    // core::mem::drop(reference_counted);
-    // println!("reference count is {} now", Rc::strong_count(&cloned_reference));
+    qemu_print("C\n");
 
     qemu_print("The OS is leaving VGA now...\n");
 
     enter_wide_mode(&mut mapper, &mut frame_allocator);
-
-    GD.lock().display_rect(0, 0, 800, 600, 0xFFFFFF);
-
-    // // write the string `New!` to the screen through the new mapping
-    // // - 首先，获取页面起始地址并转换为可变指针类型：`let page_ptr: *mut u64 = page.start_address().as_mut_ptr();`
-    // // - **原因**: 为了能够直接操作该虚拟地址对应的物理内存。
-    // // - 然后，通过偏移量 400 来写入数据：`unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};`
-    // // - **原因**: 使用这个偏移量和具体的数据（这里是十六进制数）将字符串 "New!" 写入屏幕缓冲区。
-    // let page_ptr: *mut u64 = page.start_address().as_mut_ptr();
-    // unsafe { page_ptr.offset(400).write_volatile(0x_f021_f077_f065_f04e)};
-    // // 创建了一个包含整数 41 的 Box 对象，并将其分配在堆上。
-    //  // - **原因**: 测试堆的初始化是否成功，以及后续动态分配功能是否正常工作
-    // let _x = Box::new(41);
-    // println!("{:?}",x);
-
-    let lpld = include_bytes!("../assets/91527085_p0.bmp");
-    let cjn_os = include_bytes!("../assets/cjn-os.bmp");
-    //GD.lock().display_img(0, 0, lpld);
-    GD.lock().display_img(400, 300, cjn_os);
-    test_font();
+    init_gui();
+    println!("\n\n\t\t万里之行, 始于足下");
     // 进入无限循环防止 `_start` 函数,返回也确保内核不会意外退出到未定义行为状态中去
     cjn_os::hlt_loop();
 }

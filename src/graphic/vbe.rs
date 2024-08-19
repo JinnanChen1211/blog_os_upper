@@ -4,13 +4,10 @@ use alloc::format;
 use x86::io::outw;
 // 引入 x86_64 架构相关的分页模块和类型，包括帧分配器、偏移页表以及页面大小
 use x86_64::structures::paging::{FrameAllocator, OffsetPageTable, Size4KiB};
-// 从自定义模块中引入函数 `create_graphic_memory_mapping`, 用于创建图形内存映射
+use crate::io::pci::{pci_config_read_u32, pci_find_device};
 use crate::memory::graphic_support::create_graphic_memory_mapping;
-
-// 引入 PCI 模块中的函数 `pci_config_read_u32` 和 `pci_find_device`, 用于读取 PCI 配置空间并查找设备
-use crate::pci::{pci_config_read_u32, pci_find_device};
 // 引入自定义模块中的函数 `qemu_print`, 用于打印调试信息到 QEMU 控制台
-use crate::qemu::qemu_print;
+use crate::io::qemu::qemu_print;
 
 // 定义两个常量，表示VBE接口的I/O端口地址（INDEX和DATA）
 const VBE_DISPI_IOPORT_INDEX: u16 = 0x01CE;
@@ -54,7 +51,7 @@ unsafe fn bga_write_register(index: u16, value: u16) {
 // 宽屏模式进入函数
 pub unsafe fn bga_enter_wide(
     mapper: &mut OffsetPageTable,
-    frame_allocator: &mut impl FrameAllocator<Size4KiB>
+    frame_allocator: &mut impl FrameAllocator<Size4KiB>,
 ) {
     // 定义进入宽屏模式的不安全方法：
     // - 首先禁用VBE，通过将Enable寄存器设置为0实现
@@ -66,7 +63,7 @@ pub unsafe fn bga_enter_wide(
     // 设置显示模式
     bga_write_register(VbeDispiIndex::Xres as u16, super::WIDTH as u16);
     bga_write_register(VbeDispiIndex::Yres as u16, super::HEIGHT as u16);
-    bga_write_register(VbeDispiIndex::Bpp as u16, VbeDispiBpp::_24 as u16);
+    bga_write_register(VbeDispiIndex::Bpp as u16, VbeDispiBpp::_32 as u16);
 
     // 再次启用 VBE，将 Enable 寄存器设置为特殊值以开启图形模式
     bga_write_register(VbeDispiIndex::Enable as u16, 0x41);

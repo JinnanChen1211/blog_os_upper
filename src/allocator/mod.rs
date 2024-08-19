@@ -10,11 +10,11 @@ use x86_64::{
     VirtAddr,
 };
 
-use linked_list_allocator::LockedHeap;
-use crate::allocator::bump::BumpAllocator;
+use crate::allocator::linked_list::LinkedListAllocator;
 
 // 引入自定义的 `BumpAllocator` 分配器，用于堆内存管理
 pub mod bump;
+mod linked_list;
 // 定义一个通用的锁结构体 `Locked`, 它包含一个互斥锁 (`spin::Mutex`) 来保护内部数据
 pub struct Locked<A> {
     inner:spin::Mutex<A>,
@@ -55,11 +55,10 @@ unsafe impl GlobalAlloc for Dummy {
 }
 
 #[global_allocator]
-static ALLOCATOR: Locked<BumpAllocator> = Locked::new(BumpAllocator::new());
+static ALLOCATOR: Locked<LinkedListAllocator> = Locked::new(LinkedListAllocator::new());
 
-// 定义堆起始地址和堆大小常量。堆起始地址为16进制值，堆大小为100 KiB
-pub const HEAP_START: usize = 0x_2002_0831_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; // 100Kib
+pub const HEAP_START: usize = 0x_0001_0000_0000;
+pub const HEAP_SIZE: usize = 60 * 1024 * 1024; // 10 MiB
 
 // 初始化堆：
 // 1. **计算页面范围**：从起始地址到结束地址，确定需要多少页。
@@ -94,6 +93,30 @@ pub fn init_heap (
     }
 
     Ok(())
+}
+
+#[allow(dead_code)]
+pub fn test_allocator() {
+    use alloc::boxed::Box;
+    use crate::println;
+    use alloc::vec::Vec;
+    use alloc::vec;
+    use alloc::rc::Rc;
+
+    let heap_value = Box::new(831);
+    println!("heap_value is at {:p}", heap_value);
+
+    let mut vec = Vec::new();
+    for i in 0..500 {
+        vec.push(i)
+    }
+    println!("vec at {:p}", vec.as_slice());
+
+    let reference_counted = Rc::new(vec![1, 2, 3]);
+    let cloned_reference = reference_counted.clone();
+    println!("current reference count is {}", Rc::strong_count(&cloned_reference));
+    core::mem::drop(reference_counted);
+    println!("reference count is {} now", Rc::strong_count(&cloned_reference));
 }
 
 // 这个代码片段实现了一个简单的内存分配器，并初始化了一个堆。主要包括以下几个步骤：
